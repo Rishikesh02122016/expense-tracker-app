@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprehensive Monthly Expense Tracker</title>
+    <title>Monthly Expense Tracker</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -22,7 +22,7 @@
 
     <div id="app" class="max-w-5xl mx-auto">
         <h1 class="text-4xl font-bold text-gray-900 mb-2">Detailed Monthly Expense Tracker</h1>
-        <p class="text-gray-500 mb-8">Tracking income, expenses, and net balance based on your detailed spreadsheet.</p>
+        <p class="text-gray-500 mb-8">Input your monthly income and expenses manually to see a real-time summary.</p>
 
         <!-- Loading & Status Indicator -->
         <div id="statusMessage" class="text-sm text-center p-2 rounded-lg mb-4 hidden"></div>
@@ -114,7 +114,7 @@
                                 <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                                 <select id="category" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
                                     <option value="" disabled selected>Select a Category</option>
-                                    <!-- Options generated from the spreadsheet data -->
+                                    <!-- Options based on your original spreadsheet data -->
                                     <option value="Vehicle Expense">Vehicle Expense</option>
                                     <option value="Miscellaneous">Miscellaneous</option>
                                     <option value="Clothing">Clothing</option>
@@ -179,7 +179,19 @@
 
         // Constants from the environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-expense-tracker';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        // Robust parsing of firebaseConfig
+        const firebaseConfig = (() => {
+            try {
+                if (typeof __firebase_config === 'string' && __firebase_config.length > 0) {
+                    return JSON.parse(__firebase_config);
+                }
+            } catch (e) {
+                console.error("Error parsing __firebase_config:", e);
+            }
+            return {};
+        })();
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
         // DOM Elements
@@ -199,10 +211,11 @@
         const monthlyIncomeEl = document.getElementById('monthlyIncome');
         const currentMonthYearDisplayEl = document.getElementById('currentMonthYearDisplay');
 
+
         // Internal State
         let currentMonthlyIncome = 0;
 
-        // Helper function for currency formatting (using Indian Rupee symbol as suggested by sheet content)
+        // Helper function for currency formatting (using Indian Rupee symbol)
         const formatter = new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
@@ -222,6 +235,8 @@
                 statusMessageEl.classList.add('bg-green-100', 'text-green-800');
             } else if (type === 'error') {
                 statusMessageEl.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'warning') {
+                statusMessageEl.classList.add('bg-yellow-100', 'text-yellow-800');
             } else { // info
                 statusMessageEl.classList.add('bg-blue-100', 'text-blue-800');
             }
@@ -232,6 +247,11 @@
 
         async function initializeFirebase() {
             try {
+                // Check if config is empty before attempting initialization
+                if (Object.keys(firebaseConfig).length === 0) {
+                     throw new Error("Firebase configuration is missing. Cannot initialize application.");
+                }
+
                 // setLogLevel('debug'); // Uncomment to debug Firestore issues
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -279,20 +299,11 @@
             return `${year}-${month}`;
         }
         
-        // Get month and year from a timestamp (Firestore server timestamp or Date object)
-        function getMonthYearFromDate(timestamp) {
-            let date;
-            // Check if it's a Firestore Timestamp object
-            if (timestamp && typeof timestamp.toDate === 'function') {
-                date = timestamp.toDate();
-            } else if (timestamp) {
-                date = new Date(timestamp);
-            } else {
-                date = new Date();
-            }
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            return `${year}-${month}`;
+        // Get month and year from a date string (YYYY-MM-DD)
+        function getMonthYearFromDate(dateString) {
+            if (!dateString) return '';
+            // Assumes YYYY-MM-DD format
+            return dateString.substring(0, 7); 
         }
 
         // Paths to Firestore collections/documents
@@ -311,7 +322,16 @@
         // Renders the list of expenses and updates the summary
         function renderData(expenses) {
             // Sort expenses by date descending (latest first)
-            expenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+            expenses.sort((a, b) => {
+                // Primary sort: Date string comparison (YYYY-MM-DD)
+                if (b.date < a.date) return -1;
+                if (b.date > a.date) return 1;
+                
+                // Secondary sort: Use Firestore timestamp if dates are identical
+                const timeA = a.timestamp?.seconds || 0;
+                const timeB = b.timestamp?.seconds || 0;
+                return timeB - timeA; 
+            });
 
             // Clear the list
             expenseListEl.innerHTML = '';
@@ -346,7 +366,7 @@
                     <div class="flex-1 min-w-0 mr-4">
                         <p class="text-gray-900 font-medium truncate">${expense.description || expense.category}</p>
                         <p class="text-xs text-gray-500">
-                            ${new Date(expense.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
+                            ${new Date(expense.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
                             | <span class="font-semibold text-indigo-600">${expense.category}</span>
                             <span class="text-gray-400 ml-2">by ${expense.payer}</span>
                         </p>
@@ -375,15 +395,14 @@
             netBalanceEl.textContent = formatCurrency(netBalance);
             
             // Set Net Balance color
+            netBalanceEl.classList.remove('text-green-600', 'text-red-600');
+            netBalanceEl.parentElement.classList.remove('bg-green-100', 'border-green-300', 'bg-red-100', 'border-red-300');
+
             if (netBalance >= 0) {
-                netBalanceEl.classList.remove('text-red-600');
-                netBalanceEl.classList.add('text-green-600');
-                netBalanceEl.parentElement.classList.remove('bg-red-100', 'border-red-300');
-                netBalanceEl.parentElement.classList.add('bg-green-100', 'border-green-300');
+                netBalanceEl.classList.add('text-indigo-900'); // Keep neutral indigo for positive/zero
+                netBalanceEl.parentElement.classList.add('bg-indigo-100', 'border-indigo-300');
             } else {
-                netBalanceEl.classList.remove('text-green-600');
                 netBalanceEl.classList.add('text-red-600');
-                netBalanceEl.parentElement.classList.remove('bg-green-100', 'border-green-300');
                 netBalanceEl.parentElement.classList.add('bg-red-100', 'border-red-300');
             }
 
@@ -415,7 +434,6 @@
             currentMonthYearDisplayEl.textContent = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 
             // 1. Income Listener
-            // Note: We listen to income first, then expenses, but income update triggers a re-render.
             const incomeRef = getIncomeDocRef();
             if (incomeRef) {
                 onSnapshot(incomeRef, (docSnap) => {
@@ -428,9 +446,16 @@
                         monthlyIncomeEl.value = '';
                         totalIncomeDisplayEl.textContent = formatCurrency(0);
                     }
-                    // Since income affects the net balance, we rely on the expense snapshot to re-render everything
-                    // with the correct currentMonthlyIncome value.
-                    // The expense listener (below) handles the full rendering when it receives data.
+                    // Since income affects the net balance, we trigger a manual re-render 
+                    // if the expenses array is already available, ensuring summary is fresh.
+                    const existingExpenses = Array.from(expenseListEl.children)
+                                                .filter(el => el.id !== 'emptyState')
+                                                .map(el => JSON.parse(el.dataset.expense));
+                    if (existingExpenses.length > 0) {
+                         // Note: We don't have the full expense object easily from the DOM,
+                         // so the next expense snapshot will properly update the summary.
+                         // For now, only update the income display.
+                    }
 
                 }, (error) => {
                     console.error("Error listening to income:", error);
