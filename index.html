@@ -10,591 +10,394 @@
         /* Custom scrollbar for better visual appeal */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        ::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9a9a9a; }
+        
         /* Apply Inter font */
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background-color: #fbfbfc; }
+        
         /* Style for the main container */
-        .container-shadow { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .container-shadow { box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05); }
+
+        /* Custom color classes */
+        .bg-income { background-color: #d1fae5; color: #065f46; } /* Green 100/700 */
+        .bg-expense { background-color: #fee2e2; color: #991b1b; } /* Red 100/700 */
+        .bg-balance-pos { background-color: #10b981; color: white; } /* Emerald 500 */
+        .bg-balance-neg { background-color: #f87171; color: white; } /* Red 400 */
     </style>
 </head>
 <body class="min-h-screen p-4 sm:p-8">
-
+    
     <div id="app" class="max-w-5xl mx-auto">
         <h1 class="text-4xl font-bold text-gray-900 mb-2">Detailed Monthly Expense Tracker</h1>
-        <p class="text-gray-500 mb-8">Input your monthly income and expenses manually to see a real-time summary.</p>
+        <p class="text-gray-500 mb-6">Tracking income, expenses, and net balance based on your detailed spreadsheet.</p>
 
-        <!-- Loading & Status Indicator -->
-        <div id="statusMessage" class="text-sm text-center p-2 rounded-lg mb-4 hidden"></div>
-        <div id="loadingIndicator" class="text-center p-4">
-            <svg class="animate-spin h-6 w-6 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <p class="mt-2 text-indigo-600">Initializing database...</p>
+        <!-- Dynamic Message/Error Box -->
+        <div id="message-box" class="hidden p-3 rounded-lg text-sm mb-4" role="alert"></div>
+
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="text-center p-8 text-xl font-medium text-blue-500">
+            Connecting to database...
         </div>
 
-        <div id="mainContent" class="grid grid-cols-1 lg:grid-cols-4 gap-8 hidden">
+        <!-- Main Content (Hidden until loaded) -->
+        <div id="main-content" class="hidden">
             
-            <!-- Summary Panel (Always Visible) -->
-            <div class="lg:col-span-1 space-y-6">
-                 <!-- Income Setting -->
-                <div class="bg-white p-5 rounded-xl container-shadow">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-3">Set Monthly Income</h2>
-                    <form id="incomeForm" class="space-y-3">
-                        <input type="number" step="0.01" id="monthlyIncome" placeholder="e.g. 192723.00" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border text-right font-mono">
-                        <button type="submit" class="w-full py-2 px-4 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 transition">
-                            Save Income
-                        </button>
-                    </form>
-                    <p class="text-xs text-gray-500 mt-2">Income for <span id="currentMonthYearDisplay"></span></p>
+            <!-- 1. Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                
+                <!-- Total Income Card -->
+                <div class="rounded-xl p-5 bg-income container-shadow">
+                    <p class="text-sm font-semibold mb-1">Total Income</p>
+                    <p id="total-income" class="text-3xl font-bold">₹0.00</p>
                 </div>
-
-                <!-- Financial Summary -->
-                <div class="bg-white p-5 rounded-xl container-shadow">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Monthly Overview</h2>
-                    <div id="summaryDisplay" class="space-y-3">
-                        <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                            <span class="text-base font-medium text-green-700">Total Income</span>
-                            <span id="totalIncomeDisplay" class="text-xl font-bold text-green-800">$0.00</span>
-                        </div>
-                         <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                            <span class="text-base font-medium text-red-700">Total Expenses</span>
-                            <span id="totalExpenses" class="text-xl font-bold text-red-800">$0.00</span>
-                        </div>
-                        <div class="flex justify-between items-center p-3 bg-indigo-100 rounded-lg border-2 border-indigo-300">
-                            <span class="text-lg font-bold text-indigo-800">NET BALANCE</span>
-                            <span id="netBalance" class="text-2xl font-extrabold text-indigo-900">$0.00</span>
-                        </div>
-                    </div>
+                
+                <!-- Total Expenses Card -->
+                <div class="rounded-xl p-5 bg-expense container-shadow">
+                    <p class="text-sm font-semibold mb-1">Total Expenses</p>
+                    <p id="total-expense" class="text-3xl font-bold">₹0.00</p>
                 </div>
-
-                <!-- Category Breakdown -->
-                <div class="bg-white p-5 rounded-xl container-shadow">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-3">Category Breakdown:</h3>
-                    <div id="categoryBreakdown" class="space-y-2 text-sm">
-                        <p class="text-gray-500">Add expenses to see breakdown.</p>
-                    </div>
+                
+                <!-- Net Balance Card -->
+                <div id="balance-card" class="rounded-xl p-5 bg-balance-pos container-shadow">
+                    <p class="text-sm font-semibold mb-1 text-white">Net Balance</p>
+                    <p id="net-balance" class="text-3xl font-bold text-white">₹0.00</p>
                 </div>
             </div>
 
-            <!-- Expense Management & List -->
-            <div class="lg:col-span-3 space-y-8">
-                <!-- Add New Expense Form -->
-                <div class="bg-white p-6 rounded-xl container-shadow">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Record New Transaction</h2>
-                    <form id="expenseForm" class="space-y-4">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <!-- Payer -->
-                            <div>
-                                <label for="payer" class="block text-sm font-medium text-gray-700">Expense By</label>
-                                <select id="payer" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
-                                    <option value="" disabled selected>Select Payer</option>
-                                    <option value="Rishikesh">Rishikesh</option>
-                                    <option value="Abhiruchi">Abhiruchi</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <!-- Amount -->
-                            <div>
-                                <label for="amount" class="block text-sm font-medium text-gray-700">Amount (₹)</label>
-                                <input type="number" step="0.01" id="amount" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
-                            </div>
-                            <!-- Date -->
-                            <div>
-                                <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
-                                <input type="date" id="date" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
-                            </div>
+            <p class="text-xs text-gray-400 mb-4">User ID: <span id="user-id">Loading...</span></p>
+
+            <!-- 2. Transaction Form and History -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Transaction Form (lg:col-span-1) -->
+                <div class="lg:col-span-1 bg-white rounded-xl p-6 container-shadow h-fit sticky top-4">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Add Transaction</h2>
+                    
+                    <form id="transaction-form" class="space-y-4">
+                        
+                        <div>
+                            <label for="type" class="block text-sm font-medium text-gray-700">Type</label>
+                            <select id="type" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                                <option value="Expense">Expense</option>
+                                <option value="Income">Income</option>
+                            </select>
                         </div>
 
-                        <!-- Category & Description -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <!-- Category -->
-                            <div>
-                                <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
-                                <select id="category" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
-                                    <option value="" disabled selected>Select a Category</option>
-                                    <!-- Options based on your original spreadsheet data -->
-                                    <option value="Vehicle Expense">Vehicle Expense</option>
-                                    <option value="Miscellaneous">Miscellaneous</option>
-                                    <option value="Clothing">Clothing</option>
-                                    <option value="Groceries/Gas">Groceries/Gas</option>
-                                    <option value="Vegetables Fruits">Vegetables Fruits</option>
-                                    <option value="Office Expense">Office Expense</option>
-                                    <option value="Instamart">Instamart</option>
-                                    <option value="Mithi Special">Mithi Special</option>
-                                    <option value="Eating Out">Eating Out</option>
-                                    <option value="Medical">Medical</option>
-                                    <option value="Bill Payment">Bill Payment</option>
-                                    <option value="Household Items">Household Items</option>
-                                    <option value="Maid / Dhobi">Maid / Dhobi</option>
-                                    <option value="Cash given to Mummy">Cash given to Mummy</option>
-                                    <option value="Housing">Housing (For EMIs/Rent)</option>
-                                    <option value="Transportation">Transportation</option>
-                                    <option value="Entertainment">Entertainment</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <!-- Description -->
-                            <div>
-                                <label for="description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
-                                <input type="text" id="description" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border" placeholder="e.g. Scooter Fuel">
-                            </div>
+                        <div>
+                            <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                            <input type="date" id="date" required value="" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
                         </div>
 
-                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                            Record Expense (₹)
+                        <div>
+                            <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <input type="text" id="category" required placeholder="e.g., Groceries, Salary, Rent" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+                        
+                        <div>
+                            <label for="description" class="block text-sm font-medium text-gray-700">Description (Optional)</label>
+                            <input type="text" id="description" placeholder="e.g., Starbucks coffee" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+                        
+                        <div>
+                            <label for="amount" class="block text-sm font-medium text-gray-700">Amount (₹)</label>
+                            <input type="number" id="amount" required step="0.01" min="0.01" placeholder="0.00" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                        </div>
+                        
+                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                            Record Transaction
                         </button>
                     </form>
                 </div>
-
-                <!-- Expense List -->
-                <div class="bg-white p-6 rounded-xl container-shadow">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Expense History</h2>
-                    <div id="expenseList" class="space-y-3">
-                        <p class="text-gray-500 text-center py-4" id="emptyState">No expenses recorded yet. Add one above!</p>
-                        <!-- Dynamic Expense Items will be inserted here -->
+                
+                <!-- Transaction History (lg:col-span-2) -->
+                <div class="lg:col-span-2 bg-white rounded-xl p-6 container-shadow">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Transaction History</h2>
+                    
+                    <div id="history-list" class="space-y-3">
+                        <p id="empty-state" class="text-center text-gray-500 italic p-4">No transactions recorded yet.</p>
+                        <!-- Transactions will be inserted here -->
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- User Info for Context -->
-        <div class="mt-8 text-center text-xs text-gray-400">
-            <p>App ID: <span id="displayAppId"></span> | User ID: <span id="displayUserId">...</span></p>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase Imports and Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, onSnapshot, collection, setDoc, query, serverTimestamp, deleteDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, serverTimestamp, setLogLevel, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global Firebase variables
-        let app;
-        let db;
-        let auth;
-        let userId;
+        // DOM elements
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const mainContent = document.getElementById('main-content');
+        const messageBox = document.getElementById('message-box');
+        const userIdDisplay = document.getElementById('user-id');
+        const form = document.getElementById('transaction-form');
+        const historyList = document.getElementById('history-list');
+        const emptyState = document.getElementById('empty-state');
+        const totalIncomeEl = document.getElementById('total-income');
+        const totalExpenseEl = document.getElementById('total-expense');
+        const netBalanceEl = document.getElementById('net-balance');
+        const balanceCard = document.getElementById('balance-card');
 
-        // Constants from the environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-expense-tracker';
-        
-        // Robust parsing of firebaseConfig
-        const firebaseConfig = (() => {
-            try {
-                if (typeof __firebase_config === 'string' && __firebase_config.length > 0) {
-                    return JSON.parse(__firebase_config);
-                }
-            } catch (e) {
-                console.error("Error parsing __firebase_config:", e);
-            }
-            return {};
-        })();
-        
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // DOM Elements
-        const statusMessageEl = document.getElementById('statusMessage');
-        const loadingIndicatorEl = document.getElementById('loadingIndicator');
-        const mainContentEl = document.getElementById('mainContent');
-        const expenseFormEl = document.getElementById('expenseForm');
-        const expenseListEl = document.getElementById('expenseList');
-        const emptyStateEl = document.getElementById('emptyState');
-        const totalIncomeDisplayEl = document.getElementById('totalIncomeDisplay');
-        const totalExpensesEl = document.getElementById('totalExpenses');
-        const netBalanceEl = document.getElementById('netBalance');
-        const categoryBreakdownEl = document.getElementById('categoryBreakdown');
-        const displayAppIdEl = document.getElementById('displayAppId');
-        const displayUserIdEl = document.getElementById('displayUserId');
-        const incomeFormEl = document.getElementById('incomeForm');
-        const monthlyIncomeEl = document.getElementById('monthlyIncome');
-        const currentMonthYearDisplayEl = document.getElementById('currentMonthYearDisplay');
+        let db, auth;
+        let currentUserId = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-
-        // Internal State
-        let currentMonthlyIncome = 0;
-
-        // Helper function for currency formatting (using Indian Rupee symbol)
-        const formatter = new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
-        function formatCurrency(amount) {
-            return formatter.format(amount);
-        }
-
-        // Helper function for UI messages
-        function showStatus(message, type = 'info') {
-            statusMessageEl.textContent = message;
-            statusMessageEl.className = `text-sm text-center p-2 rounded-lg mb-4 block`;
+        /**
+         * Utility function to display messages or errors.
+         * @param {string} message 
+         * @param {'error'|'success'|'info'} type 
+         */
+        function displayMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
             
-            if (type === 'success') {
-                statusMessageEl.classList.add('bg-green-100', 'text-green-800');
-            } else if (type === 'error') {
-                statusMessageEl.classList.add('bg-red-100', 'text-red-800');
-            } else if (type === 'warning') {
-                statusMessageEl.classList.add('bg-yellow-100', 'text-yellow-800');
-            } else { // info
-                statusMessageEl.classList.add('bg-blue-100', 'text-blue-800');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                messageBox.classList.add('bg-blue-100', 'text-blue-700');
             }
-            setTimeout(() => statusMessageEl.classList.add('hidden'), 5000);
         }
 
-        // --- CORE APPLICATION LOGIC ---
-
-        async function initializeFirebase() {
+        /**
+         * Initializes Firebase and authenticates the user.
+         */
+        async function initializeAuthAndDatabase() {
             try {
-                // Check if config is empty before attempting initialization
-                if (Object.keys(firebaseConfig).length === 0) {
-                     throw new Error("Firebase configuration is missing. Cannot initialize application.");
+                // IMPORTANT FIX: Robust parsing of the firebase config string
+                let firebaseConfig = {};
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                } else {
+                    throw new Error("Firebase config is missing.");
                 }
 
-                // setLogLevel('debug'); // Uncomment to debug Firestore issues
-                app = initializeApp(firebaseConfig);
+                // Initialize services
+                const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
+                setLogLevel('Debug');
 
-                displayAppIdEl.textContent = appId;
+                // Authentication
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
                 
-                // 1. Authenticate User
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
 
-                // 2. Wait for Auth State Change to get userId
+                // Set up the listener for auth state changes
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        userId = user.uid;
-                        displayUserIdEl.textContent = userId;
-                        
-                        loadingIndicatorEl.classList.add('hidden');
-                        mainContentEl.classList.remove('hidden');
-                        
-                        // 3. Start listening for data changes
-                        startDataListeners();
-                        
+                        currentUserId = user.uid;
+                        userIdDisplay.textContent = currentUserId;
+                        // Once authenticated, start listening to data
+                        startDataListener();
+                        loadingIndicator.classList.add('hidden');
+                        mainContent.classList.remove('hidden');
                     } else {
-                        showStatus("Authentication failed. Please try refreshing.", 'error');
-                        loadingIndicatorEl.classList.add('hidden');
+                        // This should ideally not happen after initial sign-in
+                        displayMessage("Authentication failed. Please try again.", 'error');
                     }
                 });
 
             } catch (error) {
                 console.error("Firebase Initialization Error:", error);
-                showStatus(`Failed to initialize application: ${error.message}`, 'error');
-                loadingIndicatorEl.classList.add('hidden');
+                loadingIndicator.textContent = "Error loading application.";
+                displayMessage(`Failed to initialize application. Check console for details. Error: ${error.message}`, 'error');
             }
         }
 
-        // Get the current month and year string (e.g., "2025-11")
-        function getCurrentMonthYear() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            return `${year}-${month}`;
-        }
-        
-        // Get month and year from a date string (YYYY-MM-DD)
-        function getMonthYearFromDate(dateString) {
-            if (!dateString) return '';
-            // Assumes YYYY-MM-DD format
-            return dateString.substring(0, 7); 
-        }
+        /**
+         * Adds a new transaction to Firestore.
+         * @param {Event} e 
+         */
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!currentUserId) {
+                displayMessage("Authentication in progress. Please wait.", 'info');
+                return;
+            }
 
-        // Paths to Firestore collections/documents
-        function getExpenseCollectionRef() {
-            if (!db || !userId) return null;
-            // Private user collection for expenses
-            return collection(db, `artifacts/${appId}/users/${userId}/expenses`);
-        }
-        function getIncomeDocRef() {
-            if (!db || !userId) return null;
-            // Private document for monthly income
-            const monthYear = getCurrentMonthYear();
-            return doc(db, `artifacts/${appId}/users/${userId}/income`, monthYear);
-        }
+            const type = document.getElementById('type').value;
+            const dateStr = document.getElementById('date').value;
+            const category = document.getElementById('category').value.trim();
+            const description = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
 
-        // Renders the list of expenses and updates the summary
-        function renderData(expenses) {
-            // Sort expenses by date descending (latest first)
-            expenses.sort((a, b) => {
-                // Primary sort: Date string comparison (YYYY-MM-DD)
-                if (b.date < a.date) return -1;
-                if (b.date > a.date) return 1;
+            if (!amount || amount <= 0 || !category) {
+                displayMessage("Please fill in a valid amount and category.", 'error');
+                return;
+            }
+
+            try {
+                const collectionPath = `/artifacts/${appId}/users/${currentUserId}/transactions`;
                 
-                // Secondary sort: Use Firestore timestamp if dates are identical
-                const timeA = a.timestamp?.seconds || 0;
-                const timeB = b.timestamp?.seconds || 0;
-                return timeB - timeA; 
+                await addDoc(collection(db, collectionPath), {
+                    type: type, // 'Income' or 'Expense'
+                    date: dateStr, // Storing as YYYY-MM-DD string for simple sorting and display
+                    category: category,
+                    description: description,
+                    amount: amount,
+                    timestamp: serverTimestamp()
+                });
+
+                form.reset();
+                // Set default date back to today
+                document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+                displayMessage(`Successfully recorded ${type}!`, 'success');
+
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                displayMessage("Failed to record transaction. Please try again.", 'error');
+            }
+        }
+
+        /**
+         * Starts the real-time listener for the user's transactions.
+         */
+        function startDataListener() {
+            if (!db || !currentUserId) return;
+
+            const collectionPath = `/artifacts/${appId}/users/${currentUserId}/transactions`;
+            const q = query(collection(db, collectionPath));
+            
+            // Real-time listener
+            onSnapshot(q, (snapshot) => {
+                const transactions = [];
+                snapshot.forEach((doc) => {
+                    // Extract data and include the document ID
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Process and render the transactions
+                updateUI(transactions);
+            }, (error) => {
+                console.error("Error listening to transactions: ", error);
+                displayMessage("Failed to load history. Please check your connection.", 'error');
             });
+        }
 
-            // Clear the list
-            expenseListEl.innerHTML = '';
+        /**
+         * Deletes a transaction from Firestore.
+         * @param {string} id - The Firestore document ID.
+         */
+        async function deleteTransaction(id) {
+            if (!currentUserId) return;
             
-            const currentMonthYear = getCurrentMonthYear();
-            let totalMonthlyExpense = 0;
-            const categoryTotals = {};
+            const confirmed = window.confirm("Are you sure you want to delete this transaction?"); // Using simple confirm for brevity, but a custom modal is better practice
+            if (!confirmed) return;
+
+            try {
+                const docPath = `/artifacts/${appId}/users/${currentUserId}/transactions/${id}`;
+                await deleteDoc(doc(db, docPath));
+                displayMessage("Transaction deleted.", 'info');
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+                displayMessage("Failed to delete transaction.", 'error');
+            }
+        }
+
+        /**
+         * Calculates totals and renders the history list.
+         * @param {Array<Object>} transactions 
+         */
+        function updateUI(transactions) {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            // Sort transactions by date (descending)
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            // Clear existing history
+            historyList.innerHTML = '';
             
-            // 1. Calculate Expenses and Render List
-            if (expenses.length === 0) {
-                emptyStateEl.classList.remove('hidden');
+            if (transactions.length === 0) {
+                emptyState.classList.remove('hidden');
             } else {
-                emptyStateEl.classList.add('hidden');
+                emptyState.classList.add('hidden');
             }
 
-            expenses.forEach(expense => {
-                const amount = parseFloat(expense.amount);
+            // Render and calculate
+            transactions.forEach(t => {
+                const amount = t.amount || 0;
                 
-                // Only count expenses for the current month
-                const expenseMonthYear = getMonthYearFromDate(expense.date);
-                if (expenseMonthYear === currentMonthYear) {
-                    totalMonthlyExpense += amount;
-                    
-                    const category = expense.category || 'Other';
-                    categoryTotals[category] = (categoryTotals[category] || 0) + amount;
+                if (t.type === 'Income') {
+                    totalIncome += amount;
+                } else if (t.type === 'Expense') {
+                    totalExpense += amount;
                 }
 
-                // --- Render List Item ---
+                // Create the history item element
+                const isExpense = t.type === 'Expense';
+                const colorClass = isExpense ? 'border-red-400' : 'border-green-400';
+                const sign = isExpense ? '-' : '+';
+                const signColor = isExpense ? 'text-red-600' : 'text-green-600';
+
                 const item = document.createElement('div');
-                item.className = 'flex justify-between items-center p-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 rounded-lg transition duration-100';
+                item.className = `flex justify-between items-center p-4 border-l-4 ${colorClass} bg-gray-50 rounded-lg transition duration-150 ease-in-out hover:bg-gray-100`;
                 item.innerHTML = `
-                    <div class="flex-1 min-w-0 mr-4">
-                        <p class="text-gray-900 font-medium truncate">${expense.description || expense.category}</p>
-                        <p class="text-xs text-gray-500">
-                            ${new Date(expense.date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })} 
-                            | <span class="font-semibold text-indigo-600">${expense.category}</span>
-                            <span class="text-gray-400 ml-2">by ${expense.payer}</span>
+                    <div>
+                        <p class="font-semibold text-gray-800">${t.category || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${t.description || 'No description'}</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            ${t.date ? new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date N/A'}
                         </p>
                     </div>
                     <div class="flex items-center space-x-3">
-                        <span class="text-lg font-semibold text-red-600 flex-shrink-0">
-                            -${formatCurrency(amount)}
-                        </span>
-                        <button data-id="${expense.id}" class="delete-btn text-red-400 hover:text-red-600 transition duration-150">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <p class="text-lg font-bold ${signColor}">
+                            ${sign} ₹${amount.toFixed(2)}
+                        </p>
+                        <button class="delete-btn text-gray-400 hover:text-red-500 transition" data-id="${t.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
                         </button>
                     </div>
                 `;
-                expenseListEl.appendChild(item);
-            });
-            
-            // Re-attach delete listeners
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', handleDeleteExpense);
+                historyList.appendChild(item);
             });
 
-            // 2. Update Financial Summary
-            const netBalance = currentMonthlyIncome - totalMonthlyExpense;
-            
-            totalExpensesEl.textContent = formatCurrency(totalMonthlyExpense);
-            netBalanceEl.textContent = formatCurrency(netBalance);
-            
-            // Set Net Balance color
-            netBalanceEl.classList.remove('text-green-600', 'text-red-600');
-            netBalanceEl.parentElement.classList.remove('bg-green-100', 'border-green-300', 'bg-red-100', 'border-red-300');
+            // Update Summary
+            const netBalance = totalIncome - totalExpense;
+            totalIncomeEl.textContent = `₹${totalIncome.toFixed(2)}`;
+            totalExpenseEl.textContent = `₹${totalExpense.toFixed(2)}`;
+            netBalanceEl.textContent = `₹${netBalance.toFixed(2)}`;
 
+            // Update Balance Card style
+            balanceCard.classList.remove('bg-balance-pos', 'bg-balance-neg');
             if (netBalance >= 0) {
-                netBalanceEl.classList.add('text-indigo-900'); // Keep neutral indigo for positive/zero
-                netBalanceEl.parentElement.classList.add('bg-indigo-100', 'border-indigo-300');
+                balanceCard.classList.add('bg-balance-pos');
             } else {
-                netBalanceEl.classList.add('text-red-600');
-                netBalanceEl.parentElement.classList.add('bg-red-100', 'border-red-300');
+                balanceCard.classList.add('bg-balance-neg');
             }
 
-
-            // 3. Update Category Breakdown
-            categoryBreakdownEl.innerHTML = ''; // Clear previous breakdown
-            const sortedCategories = Object.entries(categoryTotals)
-                .sort(([, a], [, b]) => b - a); // Sort by amount descending
-
-            if (sortedCategories.length > 0) {
-                sortedCategories.forEach(([category, total]) => {
-                    const breakdownItem = document.createElement('div');
-                    breakdownItem.className = 'flex justify-between text-gray-700 p-2 border-b border-gray-100';
-                    breakdownItem.innerHTML = `
-                        <span>${category}</span>
-                        <span class="font-medium text-red-600">-${formatCurrency(total)}</span>
-                    `;
-                    categoryBreakdownEl.appendChild(breakdownItem);
+            // Attach delete listeners
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    deleteTransaction(e.currentTarget.dataset.id);
                 });
-            } else {
-                 categoryBreakdownEl.innerHTML = '<p class="text-gray-500">Add expenses to see breakdown.</p>';
-            }
-        }
-
-        // Listens to Firestore for real-time updates
-        function startDataListeners() {
-            // Set current month display
-            const today = new Date();
-            currentMonthYearDisplayEl.textContent = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-
-            // 1. Income Listener
-            const incomeRef = getIncomeDocRef();
-            if (incomeRef) {
-                onSnapshot(incomeRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        currentMonthlyIncome = parseFloat(docSnap.data().amount || 0);
-                        monthlyIncomeEl.value = currentMonthlyIncome;
-                        totalIncomeDisplayEl.textContent = formatCurrency(currentMonthlyIncome);
-                    } else {
-                        currentMonthlyIncome = 0;
-                        monthlyIncomeEl.value = '';
-                        totalIncomeDisplayEl.textContent = formatCurrency(0);
-                    }
-                    // Since income affects the net balance, we trigger a manual re-render 
-                    // if the expenses array is already available, ensuring summary is fresh.
-                    const existingExpenses = Array.from(expenseListEl.children)
-                                                .filter(el => el.id !== 'emptyState')
-                                                .map(el => JSON.parse(el.dataset.expense));
-                    if (existingExpenses.length > 0) {
-                         // Note: We don't have the full expense object easily from the DOM,
-                         // so the next expense snapshot will properly update the summary.
-                         // For now, only update the income display.
-                    }
-
-                }, (error) => {
-                    console.error("Error listening to income:", error);
-                    showStatus("Failed to load monthly income.", 'error');
-                });
-            }
-            
-            // 2. Expense Listener
-            const expensesRef = getExpenseCollectionRef();
-            if (expensesRef) {
-                onSnapshot(expensesRef, (snapshot) => {
-                    const expenses = [];
-                    snapshot.forEach(doc => {
-                        expenses.push({ id: doc.id, ...doc.data() });
-                    });
-                    // This is the primary function call that updates the UI
-                    renderData(expenses); 
-                }, (error) => {
-                    console.error("Error listening to expenses:", error);
-                    showStatus("Failed to load expenses in real-time.", 'error');
-                });
-            }
-        }
-        
-        // Handles form submission to set monthly income
-        async function handleSetIncome(e) {
-            e.preventDefault();
-            const amount = monthlyIncomeEl.value;
-            
-            if (!amount || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
-                 showStatus("Please enter a valid income amount.", 'error');
-                 return;
-            }
-            
-            const incomeData = {
-                amount: parseFloat(amount).toFixed(2), 
-                timestamp: serverTimestamp()
-            };
-            
-            try {
-                const incomeRef = getIncomeDocRef();
-                if (!incomeRef) throw new Error("Database not initialized.");
-                
-                // Use setDoc to create or overwrite the income for the current month
-                await setDoc(incomeRef, incomeData);
-                
-                showStatus(`Monthly income saved as ${formatCurrency(parseFloat(amount))}.`, 'success');
-            } catch (error) {
-                console.error("Error setting income: ", error);
-                showStatus(`Failed to save income: ${error.message}`, 'error');
-            }
-        }
-
-        // Handles form submission to add a new expense
-        async function handleAddExpense(e) {
-            e.preventDefault();
-            
-            const amount = document.getElementById('amount').value;
-            const date = document.getElementById('date').value;
-            const category = document.getElementById('category').value;
-            const payer = document.getElementById('payer').value;
-            const description = document.getElementById('description').value;
-
-            if (!amount || !date || !category || !payer) {
-                showStatus("Please fill in Payer, Amount, Date, and Category.", 'error');
-                return;
-            }
-            
-            const newExpense = {
-                amount: parseFloat(amount).toFixed(2), // Ensure consistent number format
-                date: date, // Store as YYYY-MM-DD string
-                category: category,
-                payer: payer,
-                description: description.trim(),
-                timestamp: serverTimestamp() // Firestore timestamp for ordering/metadata
-            };
-
-            try {
-                const expensesRef = getExpenseCollectionRef();
-                if (!expensesRef) throw new Error("Database not initialized.");
-                
-                await addDoc(expensesRef, newExpense);
-                
-                showStatus("Expense recorded successfully!", 'success');
-                expenseFormEl.reset();
-                document.getElementById('date').valueAsDate = new Date(); // Reset date to today
-                
-            } catch (error) {
-                console.error("Error adding document: ", error);
-                showStatus(`Failed to record expense: ${error.message}`, 'error');
-            }
-        }
-
-        // Handles expense deletion
-        async function handleDeleteExpense(e) {
-            const expenseId = e.currentTarget.dataset.id;
-            
-            // Custom replacement for window.confirm
-            const modal = document.createElement('div');
-            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-            modal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full">
-                    <h3 class="text-lg font-semibold mb-3">Confirm Deletion</h3>
-                    <p class="text-gray-600 mb-4">Are you sure you want to delete this expense?</p>
-                    <div class="flex justify-end space-x-2">
-                        <button id="cancelDelete" class="py-2 px-4 rounded-lg text-gray-700 hover:bg-gray-100">Cancel</button>
-                        <button id="confirmDelete" class="py-2 px-4 rounded-lg bg-red-600 text-white hover:bg-red-700">Delete</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            document.getElementById('cancelDelete').addEventListener('click', () => {
-                document.body.removeChild(modal);
-            });
-
-            document.getElementById('confirmDelete').addEventListener('click', async () => {
-                document.body.removeChild(modal);
-                try {
-                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/expenses`, expenseId);
-                    await deleteDoc(docRef);
-                    showStatus("Expense deleted.", 'success');
-                } catch (error) {
-                    console.error("Error deleting document: ", error);
-                    showStatus(`Failed to delete expense: ${error.message}`, 'error');
-                }
             });
         }
         
-        // --- Initialization and Event Binding ---
-        window.onload = () => {
-             // Set default date to today
-            document.getElementById('date').valueAsDate = new Date();
-            
-            initializeFirebase();
-            expenseFormEl.addEventListener('submit', handleAddExpense);
-            incomeFormEl.addEventListener('submit', handleSetIncome);
-        };
+        // --- Event Listeners and Initial Setup ---
         
+        // 1. Set today's date as default in the form
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+
+        // 2. Form submission listener
+        form.addEventListener('submit', handleFormSubmit);
+
+        // 3. Start the entire application process
+        initializeAuthAndDatabase();
+
     </script>
 </body>
 </html>
